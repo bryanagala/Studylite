@@ -11,12 +11,30 @@ declare global {
   var __studyliteSql: ReturnType<typeof postgres> | undefined;
 }
 
+function needsSsl(url: string) {
+  return !(
+    url.includes("127.0.0.1") ||
+    url.includes("localhost") ||
+    url.includes("@postgres:")
+  );
+}
+
 function getClient() {
+  const options = {
+    max: process.env.NODE_ENV === "production" ? 1 : 10,
+    idle_timeout: 20,
+    connect_timeout: 30,
+    // Railway / cloud Postgres require TLS from Vercel
+    ssl: needsSsl(connectionString) ? ("require" as const) : undefined,
+    // Safer for serverless / pooled connections
+    prepare: false,
+  };
+
   if (process.env.NODE_ENV === "production") {
-    return postgres(connectionString, { max: 10 });
+    return postgres(connectionString, options);
   }
   if (!global.__studyliteSql) {
-    global.__studyliteSql = postgres(connectionString, { max: 10 });
+    global.__studyliteSql = postgres(connectionString, options);
   }
   return global.__studyliteSql;
 }
