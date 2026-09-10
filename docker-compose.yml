@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: studylite-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: studylite
+      POSTGRES_PASSWORD: studylite
+      POSTGRES_DB: studylite
+    volumes:
+      - studylite_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studylite -d studylite"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  studylite_pgdata:
