@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { isDatabaseConfigured } from "@/lib/db/client";
+import { formatDbError, isDatabaseConfigured } from "@/lib/db/client";
 import * as repo from "@/lib/store/pg-repo";
 
 const SESSION_COOKIE = "studylite_uid";
@@ -27,7 +27,11 @@ async function setSession(userId: string | null) {
 export async function GET() {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { ok: false, error: "Postgres is not configured. Set DATABASE_URL or USE_LOCAL_DB=true." },
+      {
+        ok: false,
+        error:
+          "DATABASE_URL is not set on this deployment. Add the Railway public Postgres URL in Vercel → Settings → Environment Variables (Production), then Redeploy.",
+      },
       { status: 503 }
     );
   }
@@ -38,15 +42,19 @@ export async function GET() {
     const content = await repo.getContentCatalog();
     return NextResponse.json({ ok: true, ...bootstrap, content });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Database error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[api/student GET]", err);
+    return NextResponse.json({ ok: false, error: formatDbError(err) }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
-      { ok: false, error: "Postgres is not configured. Set DATABASE_URL or USE_LOCAL_DB=true." },
+      {
+        ok: false,
+        error:
+          "DATABASE_URL is not set on this deployment. Add the Railway public Postgres URL in Vercel → Settings → Environment Variables (Production), then Redeploy.",
+      },
       { status: 503 }
     );
   }
@@ -201,8 +209,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400 });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Database error";
-    console.error("[api/student]", err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[api/student POST]", err);
+    return NextResponse.json({ ok: false, error: formatDbError(err) }, { status: 500 });
   }
 }
