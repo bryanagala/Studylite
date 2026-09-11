@@ -2,17 +2,14 @@ import {
   deleteTopicAction,
   upsertTopicAction,
 } from "@/app/admin/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listSubjectsAdmin, listTopicsAdmin } from "@/lib/admin/repo";
 import { AdminFlashForm } from "@/components/admin/flash-form";
 
 export default async function AdminTopicsPage() {
-  const supabase = await createServerSupabaseClient();
-  const [{ data: topics }, { data: subjects }] = supabase
-    ? await Promise.all([
-        supabase.from("topics").select("*").order("name"),
-        supabase.from("subjects").select("id, name, icon").order("name"),
-      ])
-    : [{ data: [] }, { data: [] }];
+  const [topics, subjects] = await Promise.all([
+    listTopicsAdmin(),
+    listSubjectsAdmin(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -34,7 +31,7 @@ export default async function AdminTopicsPage() {
                 className="h-11 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 text-white"
               >
                 <option value="">Select subject</option>
-                {(subjects || []).map((s) => (
+                {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.icon} {s.name}
                   </option>
@@ -62,7 +59,7 @@ export default async function AdminTopicsPage() {
             </tr>
           </thead>
           <tbody>
-            {(topics || []).map((t) => (
+            {topics.map((t) => (
               <tr key={t.id} className="border-t border-slate-800">
                 <td className="px-4 py-3">
                   <p className="font-semibold text-white">{t.name}</p>

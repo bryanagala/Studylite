@@ -223,12 +223,17 @@ async function evaluateAchievements(userId: string) {
         achievementId: ach.id,
         earnedAt: new Date().toISOString(),
       };
-      await db.insert(t.userAchievements).values({
-        id: row.id,
-        userId,
-        achievementId: ach.id,
-        earnedAt: new Date(),
-      });
+      const inserted = await db
+        .insert(t.userAchievements)
+        .values({
+          id: row.id,
+          userId,
+          achievementId: ach.id,
+          earnedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning({ id: t.userAchievements.id });
+      if (!inserted.length) continue;
       newly.push(row);
       await insertNotification(userId, `🎉 You unlocked ${ach.name}!`, "achievement");
     }
@@ -263,6 +268,7 @@ export async function registerUser(input: {
     fullName: input.fullName.trim(),
     email,
     password: input.password,
+    role: "student",
     level: 1,
     xp: 0,
     currentStreak: 0,
@@ -367,10 +373,22 @@ export async function ensureDailyMission(userId: string): Promise<DailyMission> 
     xpReward: 100,
     completedAt: null as Date | null,
   };
-  await db.insert(t.dailyMissions).values(mission);
+  await db.insert(t.dailyMissions).values(mission).onConflictDoNothing();
+
+  const saved = await db.query.dailyMissions.findFirst({
+    where: and(eq(t.dailyMissions.userId, userId), eq(t.dailyMissions.missionDate, today)),
+  });
+  if (!saved) {
+    throw new Error("Failed to create daily mission");
+  }
   return {
-    ...mission,
-    completedAt: null,
+    id: saved.id,
+    userId: saved.userId,
+    lessonId: saved.lessonId,
+    missionDate: saved.missionDate,
+    completed: saved.completed,
+    xpReward: saved.xpReward,
+    completedAt: saved.completedAt?.toISOString() || null,
   };
 }
 

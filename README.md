@@ -95,30 +95,24 @@ Nav → **Battle**:
 
 Without Supabase Realtime this runs as **Demo Battle**. Schema for true multiplayer is in `supabase/battles.sql`.
 
-## Admin (Supabase-backed)
+## Admin (Railway Postgres)
 
-Student app can stay on localStorage. Admin uses Supabase Auth + RLS.
+Admin uses the **same** `DATABASE_URL` as the student app (Railway).
 
-1. Create a Supabase project
-2. Run SQL in order:
-   - `supabase/schema.sql`
-   - `supabase/admin.sql`
-   - (optional) `supabase/battles.sql`
-3. Set in `.env.local`:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY` (for seeding only)
-4. Open [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
-5. Create an account, then promote it:
+1. Ensure Postgres is seeded: `npm run db:setup`
+2. Open [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+3. Log in with seeded admin:
+   - Email: `admin@studylite.app`
+   - Password: `admin1234`
+4. Or create an account, then promote it:
 
 ```sql
-update public.profiles set role = 'admin' where email = 'you@email.com';
+UPDATE profiles SET role = 'admin' WHERE email = 'you@email.com';
 ```
 
-6. Log in again at `/admin` — manage Subjects, Topics, Lessons, Questions, Users
-7. Optional seed push: `npm run admin:seed`
-
 Admin routes: `/admin`, `/admin/subjects`, `/admin/topics`, `/admin/lessons`, `/admin/questions`, `/admin/users`
+
+Content edits in admin update the same tables the student app reads from Postgres.
 
 ## Demo mode (cannot break)
 

@@ -117,22 +117,42 @@ async function main() {
   );
 
   const now = new Date();
-  await db.insert(profiles).values({
-    id: DEMO_USER_ID,
-    fullName: "Sarah Johnson",
-    email: "demo@studylite.app",
-    password: "demo1234",
-    level: 6,
-    xp: 1080,
-    currentStreak: 3,
-    longestStreak: 7,
-    dailyGoalMinutes: 15,
-    studyGoal: "build_habit",
-    selectedSubjectIds: SUBJECTS.map((s) => s.id),
-    onboardingCompleted: true,
-    createdAt: now,
-    updatedAt: now,
-  });
+  await db.insert(profiles).values([
+    {
+      id: DEMO_USER_ID,
+      fullName: "Sarah Johnson",
+      email: "demo@studylite.app",
+      password: "demo1234",
+      role: "student",
+      level: 6,
+      xp: 1080,
+      currentStreak: 3,
+      longestStreak: 7,
+      dailyGoalMinutes: 15,
+      studyGoal: "build_habit",
+      selectedSubjectIds: SUBJECTS.map((s) => s.id),
+      onboardingCompleted: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      id: "user_admin",
+      fullName: "StudyLite Admin",
+      email: "admin@studylite.app",
+      password: "admin1234",
+      role: "admin",
+      level: 1,
+      xp: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      dailyGoalMinutes: 15,
+      studyGoal: null,
+      selectedSubjectIds: [],
+      onboardingCompleted: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]);
 
   const day = (offset: number) =>
     new Date(Date.now() - offset * 86400000).toISOString().slice(0, 10);
@@ -281,6 +301,7 @@ async function main() {
   console.log(`  questions: ${QUESTIONS.length}`);
   console.log(`  achievements: ${ACHIEVEMENTS.length}`);
   console.log("  demo user: demo@studylite.app / demo1234");
+  console.log("  admin user: admin@studylite.app / admin1234");
 
   await sql.end();
 }

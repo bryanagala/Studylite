@@ -46,3 +46,13 @@ body {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.landing-root {
+  --landing-navy: #070b18;
+}

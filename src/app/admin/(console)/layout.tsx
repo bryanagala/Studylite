@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/admin-shell";
-import { getAdminSession } from "@/lib/supabase/admin-auth";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { getAdminSession } from "@/lib/admin/auth";
+import { isDatabaseConfigured } from "@/lib/db/client";
 
 export default async function AdminConsoleLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     redirect("/admin/login?error=config");
   }
   const session = await getAdminSession();

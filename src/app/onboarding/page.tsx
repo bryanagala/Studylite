@@ -36,6 +36,14 @@ export default function OnboardingPage() {
     else if (profile.onboardingCompleted) router.replace("/dashboard");
   }, [ready, profile, router]);
 
+  if (!ready || !profile || profile.onboardingCompleted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        Loading…
+      </div>
+    );
+  }
+
   function toggleSubject(id: string) {
     setSubjects((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]

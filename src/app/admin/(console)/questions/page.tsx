@@ -2,18 +2,19 @@ import {
   deleteQuestionAction,
   upsertQuestionAction,
 } from "@/app/admin/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  listLessonsAdmin,
+  listQuestionsAdmin,
+  listTopicsAdmin,
+} from "@/lib/admin/repo";
 import { AdminFlashForm } from "@/components/admin/flash-form";
 
 export default async function AdminQuestionsPage() {
-  const supabase = await createServerSupabaseClient();
-  const [{ data: questions }, { data: lessons }, { data: topics }] = supabase
-    ? await Promise.all([
-        supabase.from("questions").select("*").order("created_at", { ascending: false }).limit(100),
-        supabase.from("lessons").select("id, title, topic_id").order("title"),
-        supabase.from("topics").select("id, name").order("name"),
-      ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+  const [questions, lessons, topics] = await Promise.all([
+    listQuestionsAdmin(100),
+    listLessonsAdmin(),
+    listTopicsAdmin(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -37,7 +38,7 @@ export default async function AdminQuestionsPage() {
                 className="h-11 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 text-white"
               >
                 <option value="">Select lesson</option>
-                {(lessons || []).map((l) => (
+                {lessons.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.title}
                   </option>
@@ -52,7 +53,7 @@ export default async function AdminQuestionsPage() {
                 className="h-11 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 text-white"
               >
                 <option value="">Select topic</option>
-                {(topics || []).map((t) => (
+                {topics.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -116,13 +117,10 @@ export default async function AdminQuestionsPage() {
             </tr>
           </thead>
           <tbody>
-            {(questions || []).map((q) => (
+            {questions.map((q) => (
               <tr key={q.id} className="border-t border-slate-800">
                 <td className="px-4 py-3">
-                  <p className="font-semibold text-white">{q.question_text}</p>
-                  <p className="text-xs text-slate-500">
-                    {q.question_type} · {q.difficulty} · answer: {q.correct_answer}
-                  </p>
+                  <p className="line-clamp-2 font-semibold text-white">{q.question_text}</p>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{q.lesson_id}</td>
                 <td className="px-4 py-3 text-right">
@@ -142,7 +140,11 @@ export default async function AdminQuestionsPage() {
   );
 }
 
-function Field(props: { name: string; label: string; required?: boolean }) {
+function Field(props: {
+  name: string;
+  label: string;
+  required?: boolean;
+}) {
   return (
     <label className="block text-sm">
       <span className="mb-1 block font-medium text-slate-300">{props.label}</span>

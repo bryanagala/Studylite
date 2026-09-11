@@ -25,7 +25,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${outfit.variable} ${nunito.variable} h-full`}>
+    <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${outfit.variable} ${nunito.variable} h-full scroll-smooth`}
+      >
       <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
           <StudyLiteProvider>

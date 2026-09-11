@@ -69,6 +69,7 @@ export const profiles = pgTable("profiles", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   avatarUrl: text("avatar_url"),
+  role: text("role").notNull().default("student"),
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),
   currentStreak: integer("current_streak").notNull().default(0),

@@ -2,7 +2,7 @@ import {
   deleteLessonAction,
   upsertLessonAction,
 } from "@/app/admin/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listLessonsAdmin, listTopicsAdmin } from "@/lib/admin/repo";
 import { AdminFlashForm } from "@/components/admin/flash-form";
 
 const defaultContent = JSON.stringify(
@@ -19,13 +19,10 @@ const defaultContent = JSON.stringify(
 );
 
 export default async function AdminLessonsPage() {
-  const supabase = await createServerSupabaseClient();
-  const [{ data: lessons }, { data: topics }] = supabase
-    ? await Promise.all([
-        supabase.from("lessons").select("*").order("title"),
-        supabase.from("topics").select("id, name").order("name"),
-      ])
-    : [{ data: [] }, { data: [] }];
+  const [lessons, topics] = await Promise.all([
+    listLessonsAdmin(),
+    listTopicsAdmin(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -49,7 +46,7 @@ export default async function AdminLessonsPage() {
                 className="h-11 w-full rounded-2xl border border-slate-700 bg-slate-950 px-3 text-white"
               >
                 <option value="">Select topic</option>
-                {(topics || []).map((t) => (
+                {topics.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
@@ -95,11 +92,11 @@ export default async function AdminLessonsPage() {
             </tr>
           </thead>
           <tbody>
-            {(lessons || []).map((l) => (
+            {lessons.map((l) => (
               <tr key={l.id} className="border-t border-slate-800">
                 <td className="px-4 py-3 font-semibold text-white">{l.title}</td>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500">{l.topic_id}</td>
-                <td className="px-4 py-3">{l.estimated_minutes}</td>
+                <td className="px-4 py-3 text-slate-300">{l.estimated_minutes}</td>
                 <td className="px-4 py-3 text-right">
                   <form action={deleteLessonAction}>
                     <input type="hidden" name="id" value={l.id} />

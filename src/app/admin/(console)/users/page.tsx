@@ -1,21 +1,15 @@
 import { setUserRoleAction } from "@/app/admin/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listUsersAdmin } from "@/lib/admin/repo";
 
 export default async function AdminUsersPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: users } = supabase
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email, role, level, xp, created_at")
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  const users = await listUsersAdmin();
 
   return (
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl font-extrabold">Users</h1>
         <p className="mt-1 text-slate-400">
-          Promote or demote admins. First admin must be promoted via SQL once.
+          Promote or demote admins. Seeded admin: admin@studylite.app / admin1234
         </p>
       </header>
 
@@ -30,7 +24,7 @@ export default async function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {(users || []).map((u) => (
+            {users.map((u) => (
               <tr key={u.id} className="border-t border-slate-800">
                 <td className="px-4 py-3">
                   <p className="font-semibold text-white">{u.full_name}</p>
@@ -61,7 +55,10 @@ export default async function AdminUsersPage() {
                       <option value="student">student</option>
                       <option value="admin">admin</option>
                     </select>
-                    <button type="submit" className="text-xs font-bold text-emerald-400">
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-slate-800 px-3 py-1.5 text-xs font-bold text-white"
+                    >
                       Save
                     </button>
                   </form>
@@ -70,9 +67,6 @@ export default async function AdminUsersPage() {
             ))}
           </tbody>
         </table>
-        {!users?.length ? (
-          <p className="px-4 py-6 text-sm text-slate-500">No profiles found.</p>
-        ) : null}
       </div>
     </div>
   );

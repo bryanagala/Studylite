@@ -3,81 +3,45 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getAdminSession, slugifyId } from "@/lib/supabase/admin-auth";
-
-async function requireAdminClient() {
-  const session = await getAdminSession();
-  if (!session) throw new Error("Unauthorized");
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) throw new Error("Supabase is not configured");
-  return { supabase, session };
-}
+import {
+  getAdminSession,
+  requireAdminSession,
+  setAdminSessionCookie,
+  slugifyId,
+} from "@/lib/admin/auth";
+import * as adminRepo from "@/lib/admin/repo";
+import { isDatabaseConfigured } from "@/lib/db/client";
 
 export async function adminLoginAction(formData: FormData) {
-  const email = String(formData.get("email") || "").trim();
-  const password = String(formData.get("password") || "");
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) {
-    return { error: "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and ANON KEY." };
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Login failed." };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile || profile.role !== "admin") {
-    await supabase.auth.signOut();
+  if (!isDatabaseConfigured()) {
     return {
       error:
-        "This account is not an admin. Run: update profiles set role='admin' where email='...'",
+        "Postgres is not configured. Set DATABASE_URL (Railway) in .env.local.",
     };
   }
-
+  const email = String(formData.get("email") || "").trim();
+  const password = String(formData.get("password") || "");
+  const res = await adminRepo.adminLogin(email, password);
+  if (!res.ok) return { error: res.error };
+  await setAdminSessionCookie(res.userId);
   redirect("/admin");
 }
 
 export async function adminLogoutAction() {
-  const supabase = await createServerSupabaseClient();
-  if (supabase) await supabase.auth.signOut();
+  await setAdminSessionCookie(null);
   redirect("/admin/login");
 }
 
 export async function adminRegisterBootstrapAction(formData: FormData) {
+  if (!isDatabaseConfigured()) {
+    return { error: "Postgres is not configured. Set DATABASE_URL." };
+  }
   const fullName = String(formData.get("fullName") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) {
-    return { error: "Supabase is not configured." };
-  }
-  if (!fullName || !email || password.length < 6) {
-    return { error: "Fill all fields (password min 6 characters)." };
-  }
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName, role: "student" } },
-  });
-  if (error) return { error: error.message };
-
-  return {
-    ok: true as const,
-    message: data.user
-      ? `Account created for ${email}. Promote in SQL: update public.profiles set role = 'admin' where email = '${email}';`
-      : "Check your email to confirm, then promote the profile to admin in SQL.",
-  };
+  const res = await adminRepo.adminRegisterBootstrap({ fullName, email, password });
+  if (!res.ok) return { error: res.error };
+  return { ok: true as const, message: res.message };
 }
 
 const subjectSchema = z.object({
@@ -95,16 +59,9 @@ export async function upsertSubjectAction(formData: FormData) {
     icon: formData.get("icon"),
   });
   if (!parsed.success) return { error: "Invalid subject fields." };
-
-  const { supabase } = await requireAdminClient();
+  await requireAdminSession();
   const id = parsed.data.id || slugifyId("sub", parsed.data.name);
-  const { error } = await supabase.from("subjects").upsert({
-    id,
-    name: parsed.data.name,
-    description: parsed.data.description,
-    icon: parsed.data.icon,
-  });
-  if (error) return { error: error.message };
+  await adminRepo.upsertSubject({ id, ...parsed.data });
   revalidatePath("/admin/subjects");
   revalidatePath("/admin");
   return { ok: true as const, id };
@@ -112,10 +69,10 @@ export async function upsertSubjectAction(formData: FormData) {
 
 export async function deleteSubjectAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
-  const { supabase } = await requireAdminClient();
-  const { error } = await supabase.from("subjects").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await requireAdminSession();
+  await adminRepo.deleteSubject(id);
   revalidatePath("/admin/subjects");
+  revalidatePath("/admin");
 }
 
 const topicSchema = z.object({
@@ -133,24 +90,17 @@ export async function upsertTopicAction(formData: FormData) {
     description: formData.get("description"),
   });
   if (!parsed.success) return { error: "Invalid topic fields." };
-  const { supabase } = await requireAdminClient();
+  await requireAdminSession();
   const id = parsed.data.id || slugifyId("topic", parsed.data.name);
-  const { error } = await supabase.from("topics").upsert({
-    id,
-    subject_id: parsed.data.subject_id,
-    name: parsed.data.name,
-    description: parsed.data.description,
-  });
-  if (error) return { error: error.message };
+  await adminRepo.upsertTopic({ id, ...parsed.data });
   revalidatePath("/admin/topics");
   return { ok: true as const, id };
 }
 
 export async function deleteTopicAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
-  const { supabase } = await requireAdminClient();
-  const { error } = await supabase.from("topics").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await requireAdminSession();
+  await adminRepo.deleteTopic(id);
   revalidatePath("/admin/topics");
 }
 
@@ -181,9 +131,9 @@ export async function upsertLessonAction(formData: FormData) {
     return { error: "Lesson content must be valid JSON." };
   }
 
-  const { supabase } = await requireAdminClient();
+  await requireAdminSession();
   const id = parsed.data.id || slugifyId("lesson", parsed.data.title);
-  const { error } = await supabase.from("lessons").upsert({
+  await adminRepo.upsertLesson({
     id,
     topic_id: parsed.data.topic_id,
     title: parsed.data.title,
@@ -191,16 +141,14 @@ export async function upsertLessonAction(formData: FormData) {
     difficulty: parsed.data.difficulty,
     content,
   });
-  if (error) return { error: error.message };
   revalidatePath("/admin/lessons");
   return { ok: true as const, id };
 }
 
 export async function deleteLessonAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
-  const { supabase } = await requireAdminClient();
-  const { error } = await supabase.from("lessons").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await requireAdminSession();
+  await adminRepo.deleteLesson(id);
   revalidatePath("/admin/lessons");
 }
 
@@ -238,9 +186,9 @@ export async function upsertQuestionAction(formData: FormData) {
     return { error: "Options must be a JSON array of strings." };
   }
 
-  const { supabase } = await requireAdminClient();
+  await requireAdminSession();
   const id = parsed.data.id || slugifyId("q", parsed.data.question_text);
-  const { error } = await supabase.from("questions").upsert({
+  await adminRepo.upsertQuestion({
     id,
     lesson_id: parsed.data.lesson_id,
     topic_id: parsed.data.topic_id,
@@ -251,16 +199,14 @@ export async function upsertQuestionAction(formData: FormData) {
     explanation: parsed.data.explanation,
     difficulty: parsed.data.difficulty,
   });
-  if (error) return { error: error.message };
   revalidatePath("/admin/questions");
   return { ok: true as const, id };
 }
 
 export async function deleteQuestionAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") || "");
-  const { supabase } = await requireAdminClient();
-  const { error } = await supabase.from("questions").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  await requireAdminSession();
+  await adminRepo.deleteQuestion(id);
   revalidatePath("/admin/questions");
 }
 
@@ -268,11 +214,12 @@ export async function setUserRoleAction(formData: FormData): Promise<void> {
   const userId = String(formData.get("user_id") || "");
   const role = String(formData.get("role") || "");
   if (role !== "admin" && role !== "student") throw new Error("Invalid role.");
-  const { supabase, session } = await requireAdminClient();
+  const session = await requireAdminSession();
   if (userId === session.userId && role !== "admin") {
     throw new Error("You cannot demote yourself.");
   }
-  const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
-  if (error) throw new Error(error.message);
+  await adminRepo.setUserRole(userId, role);
   revalidatePath("/admin/users");
 }
+
+export { getAdminSession };

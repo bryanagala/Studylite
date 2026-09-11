@@ -30,7 +30,7 @@ interface StudyLiteContextValue {
   ready: boolean;
   usingPostgres: boolean;
   profile: Profile | null;
-  refresh: () => void;
+  refresh: () => Promise<void>;
   register: (input: {
     fullName: string;
     email: string;
@@ -110,26 +110,24 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (usingPostgres) {
-      void pgApi
-        .fetchBootstrap()
-        .then((data) => {
-          applyBootstrap(data);
-        })
-        .catch((err) => {
-          console.error("Failed to load student data from Postgres", err);
-          applyBootstrap({
-            profile: null,
-            dailyMission: null,
-            weeklyStats: null,
-            weakTopics: [],
-            notifications: [],
-            leaderboard: null,
-            achievements: [],
-            challenges: [],
-          });
+      try {
+        const data = await pgApi.fetchBootstrap();
+        applyBootstrap(data);
+      } catch (err) {
+        console.error("Failed to load student data from Postgres", err);
+        applyBootstrap({
+          profile: null,
+          dailyMission: null,
+          weeklyStats: null,
+          weakTopics: [],
+          notifications: [],
+          leaderboard: null,
+          achievements: [],
+          challenges: [],
         });
+      }
       return;
     }
 
@@ -162,7 +160,7 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
   }, [applyBootstrap, usingPostgres]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   const value = useMemo<StudyLiteContextValue>(
@@ -175,24 +173,24 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
         if (usingPostgres) {
           const res = await pgApi.registerUser(input);
           if (!res.ok) return res;
-          refresh();
+          await refresh();
           return { ok: true };
         }
         const res = localDb.registerUser(input);
         if (!res.ok) return res;
-        refresh();
+        await refresh();
         return { ok: true };
       },
       login: async (input) => {
         if (usingPostgres) {
           const res = await pgApi.loginUser(input);
           if (!res.ok) return res;
-          refresh();
+          await refresh();
           return { ok: true };
         }
         const res = localDb.loginUser(input);
         if (!res.ok) return res;
-        refresh();
+        await refresh();
         return { ok: true };
       },
       logout: async () => {
@@ -201,7 +199,7 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
         } else {
           localDb.logoutUser();
         }
-        refresh();
+        await refresh();
       },
       completeOnboarding: async (input) => {
         if (usingPostgres) {
@@ -209,7 +207,7 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
         } else {
           localDb.completeOnboarding(input);
         }
-        refresh();
+        await refresh();
       },
       dailyMission,
       weeklyStats,
@@ -229,20 +227,20 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
             durationSeconds,
           });
         }
-        refresh();
+        await refresh();
       },
       submitQuiz: async (input) => {
         const result = usingPostgres
           ? await pgApi.submitQuiz(input)
           : localDb.submitQuiz(input);
-        refresh();
+        await refresh();
         return result;
       },
       createChallenge: async (input) => {
         const challenge = usingPostgres
           ? await pgApi.createChallenge(input)
           : localDb.createChallenge(input);
-        refresh();
+        await refresh();
         return challenge;
       },
       updateProfileName: async (fullName) => {
@@ -252,13 +250,13 @@ export function StudyLiteProvider({ children }: { children: React.ReactNode }) {
         } else {
           localDb.updateProfileName(profile.id, fullName);
         }
-        refresh();
+        await refresh();
       },
       updateSettings: async (userId, patch) => {
         const result = usingPostgres
           ? await pgApi.updateSettings(userId, patch)
           : localDb.updateSettings(userId, patch);
-        refresh();
+        await refresh();
         return result;
       },
     }),

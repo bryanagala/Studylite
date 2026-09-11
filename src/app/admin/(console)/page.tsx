@@ -1,24 +1,8 @@
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getAdminCounts } from "@/lib/admin/repo";
 
 export default async function AdminOverviewPage() {
-  const supabase = await createServerSupabaseClient();
-  const counts = { subjects: 0, topics: 0, lessons: 0, questions: 0, users: 0 };
-
-  if (supabase) {
-    const [s, t, l, q, u] = await Promise.all([
-      supabase.from("subjects").select("*", { count: "exact", head: true }),
-      supabase.from("topics").select("*", { count: "exact", head: true }),
-      supabase.from("lessons").select("*", { count: "exact", head: true }),
-      supabase.from("questions").select("*", { count: "exact", head: true }),
-      supabase.from("profiles").select("*", { count: "exact", head: true }),
-    ]);
-    counts.subjects = s.count || 0;
-    counts.topics = t.count || 0;
-    counts.lessons = l.count || 0;
-    counts.questions = q.count || 0;
-    counts.users = u.count || 0;
-  }
+  const counts = await getAdminCounts();
 
   const cards = [
     { href: "/admin/subjects", label: "Subjects", value: counts.subjects },
@@ -33,8 +17,8 @@ export default async function AdminOverviewPage() {
       <header>
         <h1 className="font-display text-3xl font-extrabold text-white">Admin overview</h1>
         <p className="mt-2 text-slate-400">
-          Control StudyLite content in Supabase. Student demo app can keep using local seed until
-          you wire content reads to the database.
+          Manage StudyLite content and users on the same Railway Postgres database as the student
+          app.
         </p>
       </header>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -52,18 +36,20 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 text-sm text-slate-300">
-        <p className="font-bold text-white">Setup checklist</p>
+        <p className="font-bold text-white">Admin access</p>
         <ol className="mt-3 list-decimal space-y-2 pl-5">
-          <li>Run <code className="text-emerald-400">supabase/schema.sql</code></li>
-          <li>Run <code className="text-emerald-400">supabase/admin.sql</code></li>
-          <li>Create an account at /admin/login</li>
+          <li>Ensure <code className="text-emerald-400">DATABASE_URL</code> points at Railway</li>
+          <li>Create an account at /admin/login (or use an existing student account)</li>
           <li>
             Promote:{" "}
             <code className="text-emerald-400">
-              update public.profiles set role=&apos;admin&apos; where email=&apos;...&apos;;
+              UPDATE profiles SET role=&apos;admin&apos; WHERE email=&apos;...&apos;;
             </code>
           </li>
-          <li>Optional: <code className="text-emerald-400">npm run admin:seed</code> to push seed content</li>
+          <li>
+            Seeded admin (after db:seed):{" "}
+            <code className="text-emerald-400">admin@studylite.app / admin1234</code>
+          </li>
         </ol>
       </div>
     </div>

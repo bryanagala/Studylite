@@ -2,14 +2,11 @@ import {
   deleteSubjectAction,
   upsertSubjectAction,
 } from "@/app/admin/actions";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { listSubjectsAdmin } from "@/lib/admin/repo";
 import { AdminFlashForm } from "@/components/admin/flash-form";
 
 export default async function AdminSubjectsPage() {
-  const supabase = await createServerSupabaseClient();
-  const { data: subjects } = supabase
-    ? await supabase.from("subjects").select("*").order("name")
-    : { data: [] as Array<{ id: string; name: string; description: string; icon: string }> };
+  const subjects = await listSubjectsAdmin();
 
   return (
     <div className="space-y-6">
@@ -41,7 +38,7 @@ export default async function AdminSubjectsPage() {
             </tr>
           </thead>
           <tbody>
-            {(subjects || []).map((s) => (
+            {subjects.map((s) => (
               <tr key={s.id} className="border-t border-slate-800">
                 <td className="px-4 py-3">
                   <span className="mr-2">{s.icon}</span>
@@ -61,8 +58,8 @@ export default async function AdminSubjectsPage() {
             ))}
           </tbody>
         </table>
-        {!subjects?.length ? (
-          <p className="px-4 py-6 text-sm text-slate-500">No subjects yet. Add one above or run admin:seed.</p>
+        {!subjects.length ? (
+          <p className="px-4 py-6 text-sm text-slate-500">No subjects yet. Add one above or run db:seed.</p>
         ) : null}
       </div>
     </div>

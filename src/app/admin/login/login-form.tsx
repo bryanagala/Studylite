@@ -14,7 +14,7 @@ export default function AdminLoginForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState(
     configError
-      ? "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local."
+      ? "Postgres is not configured. Set DATABASE_URL (Railway) in .env.local."
       : ""
   );
   const [pending, startTransition] = useTransition();
@@ -26,7 +26,11 @@ export default function AdminLoginForm() {
           StudyLite Admin
         </p>
         <p className="mt-2 text-sm text-slate-400">
-          Supabase-backed control plane for subjects, lessons, and questions.
+          Railway Postgres control plane for subjects, lessons, questions, and users.
+        </p>
+        <p className="mt-3 rounded-xl border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
+          Demo admin: <span className="font-semibold">admin@studylite.app</span> /{" "}
+          <span className="font-semibold">admin1234</span>
         </p>
 
         <div className="mt-5 flex gap-2">
@@ -91,28 +95,24 @@ export default function AdminLoginForm() {
             />
           </div>
           {error ? (
-            <p className="rounded-xl bg-rose-950/50 px-3 py-2 text-sm text-rose-300">{error}</p>
+            <p className="rounded-xl bg-rose-950/50 px-3 py-2 text-sm text-rose-300" role="alert">
+              {error}
+            </p>
           ) : null}
           {message ? (
-            <p className="rounded-xl bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
+            <p className="rounded-xl bg-emerald-950/50 px-3 py-2 text-sm text-emerald-200">
               {message}
             </p>
           ) : null}
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Please wait..." : mode === "login" ? "Admin log in" : "Create account"}
+            {pending ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
           </Button>
         </form>
-
-        <p className="mt-5 text-xs text-slate-500">
-          After first signup, promote in Supabase SQL:{" "}
-          <code className="text-emerald-400">
-            update public.profiles set role = &apos;admin&apos; where email =
-            &apos;you@email.com&apos;;
-          </code>
+        <p className="mt-5 text-center text-sm text-slate-500">
+          <Link href="/" className="font-bold text-emerald-400">
+            ← Back to StudyLite
+          </Link>
         </p>
-        <Link href="/" className="mt-4 inline-block text-sm text-slate-400 hover:text-white">
-          ← Back to StudyLite
-        </Link>
       </div>
     </div>
   );
